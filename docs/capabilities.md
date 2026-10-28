@@ -12,6 +12,7 @@ measured in simulation (see [validation.md](validation.md)) unless it says other
 - Considers only ways BombayChitra marks as walkable; knows bridges, tunnels and steps.
 - Reports coverage honestly: outside the MMR, map matching switches off and says *Outside map*.
 - Quiet run map: hides BombayChitra's 155k places and house numbers while running (visibility only).
+- BombayChitra's dark or light style, chosen on the Map tab; light reads better in direct sun.
 
 ### Position
 
@@ -94,6 +95,7 @@ measured in simulation (see [validation.md](validation.md)) unless it says other
 
 - **A killed run is recovered, not resumed.** If Android kills the app mid-run, the run ends there and is saved from
   its trace on the next launch; nothing is tracked between the kill and a new run.
-- **Dark theme only** for the map (BombayChitra's light style is shipped but not wired to a setting).
+- **The app's own screens are dark only.** The map can use BombayChitra's light style (Map tab), but the panels
+  over it stay dark.
 - **No export** (GPX/FIT) and no sync. Runs stay on the phone.
 - **English only.**
