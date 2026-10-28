@@ -31,6 +31,7 @@ import dev.nosferatu.app.ui.component.SectionLabel
 import dev.nosferatu.app.ui.component.StatePill
 import dev.nosferatu.app.ui.theme.NfTheme
 import dev.nosferatu.bombaychitra.BombayChitraDataset
+import dev.nosferatu.bombaychitra.MapTheme
 import kotlinx.coroutines.launch
 import java.util.Locale
 
@@ -93,6 +94,8 @@ fun MapDataScreen(modifier: Modifier = Modifier, extra: @Composable () -> Unit =
             }
         }
 
+        MapStyleCard()
+
         RoadGraphCard()
 
         extra()
@@ -108,6 +111,32 @@ fun MapDataScreen(modifier: Modifier = Modifier, extra: @Composable () -> Unit =
 private fun mb(bytes: Long) = String.format(Locale.US, "%.1f MB", bytes / 1e6)
 
 /** The road and path graph Nosferatu checks fixes against: BombayChitra's routing tables, loaded on device. */
+@Composable
+private fun MapStyleCard() {
+    val settings = LocalContext.current.container.settings
+    val theme by settings.mapTheme.collectAsState()
+    NfCard {
+        SectionLabel("Map style")
+        Text(
+            "BombayChitra's own styles. Light reads better in direct sun.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = NfTheme.colors.subtle,
+        )
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            for (option in MapTheme.entries.sortedByDescending { it == MapTheme.Dark }) {
+                val label = option.name.uppercase(Locale.US)
+                if (option == theme) {
+                    Button(onClick = {}, Modifier.weight(1f)) { Text(label, style = MaterialTheme.typography.labelLarge) }
+                } else {
+                    OutlinedButton(onClick = { settings.setMapTheme(option) }, Modifier.weight(1f)) {
+                        Text(label, style = MaterialTheme.typography.labelLarge)
+                    }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun RoadGraphCard() {
     val container = LocalContext.current.container
