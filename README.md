@@ -20,8 +20,13 @@ gyroscope.
 <p align="center">
   <img src="docs/screenshots/run.png" width="260" alt="A run in progress over BombayChitra's dark map">
   <img src="docs/screenshots/diagnostics.png" width="260" alt="Diagnostics: activity posterior, evidence and corrections">
-  <img src="docs/screenshots/ready.png" width="260" alt="Waiting for GPS before a run">
+  <img src="docs/screenshots/detail.png" width="260" alt="A saved run framed on the map, with its corrections">
 </p>
+<p align="center">
+  <img src="docs/screenshots/history.png" width="260" alt="Run history with totals">
+  <img src="docs/screenshots/map.png" width="260" alt="Map data: BombayChitra's tiles and road graph on the phone">
+</p>
+<p align="center"><sub>Screenshots from an Android 16 emulator driven by <code>scripts/emulator_run.py</code>.</sub></p>
 
 ## Status
 
