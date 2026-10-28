@@ -24,6 +24,12 @@ sealed interface FixVerdict {
     data class Accepted(val sigmaM: Double) : FixVerdict
     data class DownWeighted(val sigmaM: Double, val issues: List<FixIssue>) : FixVerdict
     data class Rejected(val issue: FixIssue) : FixVerdict
+
+    /**
+     * Several fixes in a row were "teleports" from the last good fix but agree with each other: the last good fix
+     * (or the start) was the outlier, not them. The filter should start again from this fix.
+     */
+    data class Reanchored(val sigmaM: Double) : FixVerdict
 }
 
 /**
@@ -31,13 +37,20 @@ sealed interface FixVerdict {
  * wrong regardless of motion: bad timestamps, repeats, missing or terrible accuracy, and teleports faster than any
  * human. Model-based checks (innovation, map) come after, in the tracker.
  *
+ * A teleport is judged against the last good fix, so if that fix was the bad one (a wrong first fix, a long
+ * multipath excursion that ended) every correct fix after it would look like a teleport until enough time passed
+ * to make the jump "possible". To avoid locking the truth out, [reanchorFixes] consecutive teleports that agree
+ * with each other at human speed become the new reference.
+ *
  * @param maxHumanSpeedMps fastest believable on-foot speed; elite sprinters touch 12 m/s for seconds.
  */
-class GpsGate(private val maxHumanSpeedMps: Double = 12.0) {
+class GpsGate(private val maxHumanSpeedMps: Double = 12.0, private val reanchorFixes: Int = 5) {
     private var last: GpsFix? = null
+    private val teleports = ArrayList<GpsFix>()
 
     fun reset() {
         last = null
+        teleports.clear()
     }
 
     fun assess(fix: GpsFix): FixVerdict {
@@ -65,13 +78,28 @@ class GpsGate(private val maxHumanSpeedMps: Double = 12.0) {
             if (fix.lat == prev.lat && fix.lon == prev.lon && (fix.speedMps ?: 0.0) > 0.5) {
                 return FixVerdict.Rejected(FixIssue.Stale)
             }
-            val dt = (fix.timeMs - prev.timeMs) / 1000.0
-            val d = Geo.distance(prev.position, fix.position)
-            // Allow for both fixes' errors before calling it a teleport.
-            val slack = 2.0 * hypot(acc, prev.accuracyM ?: acc)
-            if (dt > 0 && (d - slack) / dt > maxHumanSpeedMps) return FixVerdict.Rejected(FixIssue.ImpossibleSpeed)
+            if (!possible(prev, fix)) {
+                teleports += fix
+                if (teleports.size > reanchorFixes) teleports.removeAt(0)
+                if (teleports.size == reanchorFixes && teleports.zipWithNext().all { (a, b) -> possible(a, b) }) {
+                    teleports.clear()
+                    last = fix
+                    return FixVerdict.Reanchored(sigma)
+                }
+                return FixVerdict.Rejected(FixIssue.ImpossibleSpeed)
+            }
         }
+        teleports.clear()
         last = fix
         return if (issues.isEmpty()) FixVerdict.Accepted(sigma) else FixVerdict.DownWeighted(sigma, issues)
+    }
+
+    /** Could a person on foot have moved from [a] to [b], allowing for both fixes' errors? */
+    private fun possible(a: GpsFix, b: GpsFix): Boolean {
+        val dt = (b.timeMs - a.timeMs) / 1000.0
+        val accA = a.accuracyM ?: 20.0
+        val accB = b.accuracyM ?: 20.0
+        val slack = 2.0 * hypot(accA, accB)
+        return dt <= 0 || (Geo.distance(a.position, b.position) - slack) / dt <= maxHumanSpeedMps
     }
 }

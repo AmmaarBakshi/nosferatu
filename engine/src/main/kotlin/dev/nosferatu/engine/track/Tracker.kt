@@ -139,6 +139,10 @@ class Tracker(
                 return advance(fix.timeMs)
             }
             is FixVerdict.Accepted -> verdict.sigmaM
+            is FixVerdict.Reanchored -> {
+                if (kf.initialized) return restartOn(fix, verdict.sigmaM, "GPS agreed with itself, not with the last good fix")
+                verdict.sigmaM
+            }
             is FixVerdict.DownWeighted -> {
                 event(fix.timeMs, fix.position, CorrectionEvent.Kind.DownWeighted, verdict.issues.first())
                 verdict.sigmaM
@@ -163,14 +167,7 @@ class Tracker(
             rejectedRun += fix
             if (rejectedRun.size >= config.recoveryFixes && consistent(rejectedRun)) {
                 // The fixes agree with each other and not with us: trust them.
-                kf.reset(z, sigma, dopplerVelocity(fix)?.first ?: Vec2.ZERO, 1.0)
-                matcher?.reset()
-                rejectedRun.clear()
-                event(fix.timeMs, fix.position, CorrectionEvent.Kind.Recovered, detail = "filter re-initialised on GPS")
-                newTrailStretch()
-                lastCountedPos = kf.position
-                accepted(fix, sigma)
-                return advance(fix.timeMs)
+                return restartOn(fix, sigma, "filter re-initialised on GPS")
             }
             event(fix.timeMs, fix.position, CorrectionEvent.Kind.Rejected, FixIssue.Inconsistent, "d²=%.0f".format(d2))
             return advance(fix.timeMs)
@@ -358,6 +355,20 @@ class Tracker(
     }
 
     private fun defaultStepLength() = if (activity.isRunning) 1.1 else 0.72
+
+    /** Starts the filter again from [fix]: our estimate, not the GPS, was wrong. */
+    private fun restartOn(fix: GpsFix, sigma: Double, why: String): TrackSnapshot {
+        val f = frame ?: LocalFrame(fix.position).also { frame = it }
+        lastTimeMs = fix.timeMs
+        kf.reset(f.toLocal(fix.position), sigma, dopplerVelocity(fix)?.first ?: Vec2.ZERO, 1.0)
+        matcher?.reset()
+        rejectedRun.clear()
+        event(fix.timeMs, fix.position, CorrectionEvent.Kind.Recovered, detail = why)
+        newTrailStretch()
+        lastCountedPos = kf.position
+        accepted(fix, sigma)
+        return advance(fix.timeMs)
+    }
 
     private fun consistent(fixes: List<GpsFix>): Boolean = fixes.zipWithNext().all { (a, b) ->
         val dt = ((b.timeMs - a.timeMs) / 1000.0).coerceAtLeast(0.5)
