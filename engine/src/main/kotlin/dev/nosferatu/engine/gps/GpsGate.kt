@@ -8,6 +8,7 @@ import kotlin.math.hypot
 enum class FixIssue(val label: String) {
     OutOfOrder("older than the previous fix"),
     Duplicate("repeated fix"),
+    Stale("repeats the last position while moving"),
     Invalid("invalid coordinates"),
     NoAccuracy("no accuracy reported"),
     VeryPoorAccuracy("accuracy worse than 50 m"),
@@ -59,6 +60,11 @@ class GpsGate(private val maxHumanSpeedMps: Double = 12.0) {
             sigma *= 1.5
         }
         if (prev != null) {
+            // A receiver that is moving cannot report exactly the same position twice: the fix is a stale copy
+            // (the emulator does this during "outages", and so do some chipsets). Static hold reports speed ~0.
+            if (fix.lat == prev.lat && fix.lon == prev.lon && (fix.speedMps ?: 0.0) > 0.5) {
+                return FixVerdict.Rejected(FixIssue.Stale)
+            }
             val dt = (fix.timeMs - prev.timeMs) / 1000.0
             val d = Geo.distance(prev.position, fix.position)
             // Allow for both fixes' errors before calling it a teleport.
