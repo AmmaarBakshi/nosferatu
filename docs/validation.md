@@ -3,8 +3,8 @@
 Every number in this report comes from a test run or a recorded trace in this repository. Nothing is estimated or
 copied from elsewhere. Where something has not been measured, the report says so.
 
-**Bottom line.** In simulation, the corrected track is 1.6–3.5 m from the truth on average, against 4.7–9.8 m for raw
-GPS. Distance is within ±2.1 % in every moving scenario. Running is recognised from 9.4 to 18 km/h, and a brisk walk,
+**Bottom line.** In simulation, the corrected track is 1.6–3.9 m from the truth on average, against 4.7–9.5 m for raw
+GPS. That range covers every moving scenario and seed except the deliberately wrong start. Distance is within ±2.1 % in every moving scenario. Running is recognised from 9.4 to 18 km/h, and a brisk walk,
 a bus ride and five minutes of standing in drifting GPS add no running time. On an Android emulator the app works end
 to end, and that run found three bugs the simulator had missed; all three are fixed and kept as tests. On the same
 emulator the app survived backgrounding and location being switched off. When a revoked permission killed it mid-run,
@@ -15,7 +15,7 @@ the run was rebuilt from its trace.
 
 ```sh
 ./gradlew test                                   # all suites
-./gradlew :engine:test --tests '*ScenarioTest*' -i | grep -E '^\s+(err|seed|across|\()|mean'   # scenario table
+./gradlew :engine:test --tests '*ScenarioTest*' -i | grep -E 'err mean|across seeds'   # the scenario table
 ./gradlew :bombaychitra:test -i                  # BombayChitra graph numbers (needs the extracted graph)
 ./gradlew :bombaychitra:replay --args="traces/emulator-hill-road.txt"
 ```
