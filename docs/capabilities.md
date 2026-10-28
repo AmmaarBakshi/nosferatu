@@ -74,8 +74,9 @@ measured in simulation (see [validation.md](validation.md)) unless it says other
 
 - **Dead reckoning is short-range.** After 60 s without GPS the position is held, not extrapolated. Step length is
   learned per run and is poor if GPS was bad from the start.
-- **Without a gyroscope, outages hold the last course.** On the simulated grid an outage over a corner still stayed
-  within 3.7 m (p95), because the map matcher brings the track round the corner; off the map it would not.
+- **Without a gyroscope, outages hold the last course.** In simulation, a 25 s outage over a corner raised the run's
+  mean error from 2.1 m to 2.8 m with the map, and to 3.7 m without it. The cost sits in the seconds after the
+  corner, until GPS returns.
 - **No barometer or altitude model.** Distance is horizontal.
 - **Map-matched pull assumes you are on the way's centreline ± its half-width.** On very wide roads the pull is weak
   by design; on unmapped service lanes next to a mapped road the matcher can wrongly prefer the road for a few
