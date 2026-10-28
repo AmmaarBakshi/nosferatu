@@ -29,7 +29,7 @@ bin/
 Thumbs.db
 
 # BombayChitra data is downloaded or extracted, never committed (see docs/bombaychitra.md)
-data/
+/data/
 app/src/main/assets/bombaychitra/graph.db
 
 # Recorded runs may contain where people live
