@@ -7,6 +7,7 @@ import dev.nosferatu.engine.sim.GpsErrorModel
 import dev.nosferatu.engine.sim.GpsFault
 import dev.nosferatu.engine.sim.Leg
 import dev.nosferatu.engine.sim.RunSimulator
+import dev.nosferatu.engine.trace.TraceEvent
 import dev.nosferatu.engine.validation.Metrics
 import dev.nosferatu.engine.validation.Replay
 import kotlin.test.Test
@@ -37,8 +38,9 @@ class ScenarioTest {
         faults: List<GpsFault> = emptyList(),
         rotations: List<Int> = emptyList(),
         seed: Long = 11,
+        tamper: (TraceEvent) -> TraceEvent = { it },
     ): Metrics {
-        val events = RunSimulator(route, legs, gps, faults, seed = seed, phoneRotationsAtS = rotations).generate()
+        val events = RunSimulator(route, legs, gps, faults, seed = seed, phoneRotationsAtS = rotations).generate().map(tamper)
         val steps = Replay.run(events, Tracker(network))
         val m = Metrics.of(steps, faultEndS = faults.maxOfOrNull { it.toS })
         println(
@@ -74,6 +76,19 @@ class ScenarioTest {
             val m = scenario("run %.1f km/h".format(speed * 3.6), loop, listOf(Leg.stand(10), Leg.run(300, speed)))
             assertTrue(m.runningRecall!! > 0.9, "recall at ${speed * 3.6} km/h was ${m.runningRecall}")
         }
+    }
+
+    @Test
+    fun aStuckDopplerBearingDoesNotDragTheTrack() {
+        // Some chipsets (and the Android emulator) report a speed with a bearing that never changes.
+        val stuck: (TraceEvent) -> TraceEvent = { e ->
+            if (e is TraceEvent.Gps && e.fix.speedMps != null) TraceEvent.Gps(e.fix.copy(bearingDeg = 0.0)) else e
+        }
+        val honest = scenario("honest bearing", loop, listOf(Leg.stand(10), Leg.run(520, 3.4)))
+        val m = scenario("bearing stuck at 0°", loop, listOf(Leg.stand(10), Leg.run(520, 3.4)), tamper = stuck)
+        assertTrue(m.correctedErrorMeanM < m.rawErrorMeanM, "corrected ${m.correctedErrorMeanM} m vs raw ${m.rawErrorMeanM} m")
+        assertTrue(m.correctedErrorMeanM < honest.correctedErrorMeanM + 1.5, "stuck bearing costs too much accuracy")
+        assertTrue(kotlin.math.abs(m.distanceErrorPct) < 4.0, "distance error ${m.distanceErrorPct}%")
     }
 
     @Test
