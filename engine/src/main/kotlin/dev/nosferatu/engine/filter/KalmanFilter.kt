@@ -36,6 +36,11 @@ class KalmanFilter(var accelNoise: Double = 1.5) {
         initialized = true
     }
 
+    /** Forgets the state; the next measurement must [reset] it. */
+    fun resetUninitialized() {
+        initialized = false
+    }
+
     /** Moves the frame origin: used when the local frame is re-centred during a long run. */
     fun shift(by: Vec2) {
         x[0] -= by.x; x[1] -= by.y

@@ -96,6 +96,20 @@ class Tracker(
     private val _trail = ArrayList<MutableList<LatLon>>()
     val trail: List<List<LatLon>> get() = _trail.map { it.toList() }
 
+    /**
+     * After a pause the runner may be anywhere: the next accepted fix re-initialises the position and starts a new
+     * stretch of the trail, and nothing between the pause and that fix counts as distance.
+     */
+    fun resume() {
+        kf.resetUninitialized()
+        gate.reset()
+        matcher?.reset()
+        classifier.reset()
+        rejectedRun.clear()
+        lastCountedPos = null
+        gpsLost = false
+    }
+
     fun onAccel(s: AccelSample) {
         imuSeen = true
         imu.onAccel(s)
