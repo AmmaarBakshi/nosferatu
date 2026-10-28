@@ -56,7 +56,6 @@ import dev.nosferatu.app.ui.component.SectionLabel
 import dev.nosferatu.app.ui.component.StatePill
 import dev.nosferatu.app.ui.format.NfFormat
 import dev.nosferatu.app.ui.theme.NfTheme
-import dev.nosferatu.bombaychitra.MapTheme
 import dev.nosferatu.engine.activity.Activity
 import dev.nosferatu.engine.model.GpsFix
 import kotlinx.coroutines.flow.catch
@@ -72,6 +71,7 @@ fun RunScreen(onOpenMapData: () -> Unit, onOpenRun: (String) -> Unit, modifier: 
     val graph by container.graph.state.collectAsState()
     val live by container.tracking.live.collectAsState()
     val saved by container.tracking.lastSaved.collectAsState()
+    val mapTheme by container.settings.mapTheme.collectAsState()
     val permissions = rememberTrackingPermissions()
     var fix by remember { mutableStateOf<GpsFix?>(null) }
     var follow by rememberSaveable { mutableStateOf(true) }
@@ -98,7 +98,7 @@ fun RunScreen(onOpenMapData: () -> Unit, onOpenRun: (String) -> Unit, modifier: 
                 Button(onClick = onOpenMapData) { Text("Get the map") }
             }
         } else {
-            val style = remember(ready.file) { container.mapStyles.offlineStyle(MapTheme.Dark, ready.file, quiet = true) }
+            val style = remember(ready.file, mapTheme) { container.mapStyles.offlineStyle(mapTheme, ready.file, quiet = true) }
             val l = live
             BombayChitraMap(
                 styleJson = style,

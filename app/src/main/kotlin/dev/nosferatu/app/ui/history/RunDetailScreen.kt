@@ -46,7 +46,6 @@ import dev.nosferatu.app.ui.component.SectionLabel
 import dev.nosferatu.app.ui.format.NfFormat
 import dev.nosferatu.app.ui.run.overlayColors
 import dev.nosferatu.app.ui.theme.NfTheme
-import dev.nosferatu.bombaychitra.MapTheme
 import dev.nosferatu.engine.geo.LatLon
 import kotlinx.coroutines.launch
 import java.util.Date
@@ -57,6 +56,7 @@ fun RunDetailScreen(id: String, onBack: () -> Unit, modifier: Modifier = Modifie
     val container = LocalContext.current.container
     val runs by container.runs.runs.collectAsState()
     val tiles by container.mapData.tiles.collectAsState()
+    val mapTheme by container.settings.mapTheme.collectAsState()
     val scope = rememberCoroutineScope()
     var confirmDelete by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { if (runs.isEmpty()) container.runs.refresh() }
@@ -82,7 +82,7 @@ fun RunDetailScreen(id: String, onBack: () -> Unit, modifier: Modifier = Modifie
         val ready = tiles as? TilesState.Ready
         Box(Modifier.fillMaxWidth().height(320.dp).clip(RoundedCornerShape(20.dp))) {
             if (ready != null && track.any { it.isNotEmpty() }) {
-                val style = remember(ready.file) { container.mapStyles.offlineStyle(MapTheme.Dark, ready.file, quiet = true) }
+                val style = remember(ready.file, mapTheme) { container.mapStyles.offlineStyle(mapTheme, ready.file, quiet = true) }
                 BombayChitraMap(
                     styleJson = style,
                     overlay = MapOverlayState(trail = track),
