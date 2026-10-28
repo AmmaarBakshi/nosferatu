@@ -45,7 +45,9 @@ measured in simulation (see [validation.md](validation.md)) unless it says other
   screen off.
 - Handles permission loss and location being switched off mid-run, with a banner, instead of crashing.
 - Run history and detail, with the route on BombayChitra's map and correction counts.
-- Every run's raw sensor stream saved for replay.
+- Every run's raw sensor stream saved for replay, pauses included.
+- A run the app dies in (revoking location access kills it, and so may the system) is rebuilt from its raw trace at
+  the next launch and marked *Recovered*. The trace is flushed every 5 s, so at most the last few seconds are lost.
 
 ## Limitations
 
@@ -72,7 +74,8 @@ measured in simulation (see [validation.md](validation.md)) unless it says other
 
 - **Dead reckoning is short-range.** After 60 s without GPS the position is held, not extrapolated. Step length is
   learned per run and is poor if GPS was bad from the start.
-- **Gyroscope required for heading during outages.** Without one, outages are bridged by holding the last course.
+- **Without a gyroscope, outages hold the last course.** On the simulated grid an outage over a corner still stayed
+  within 3.7 m (p95), because the map matcher brings the track round the corner; off the map it would not.
 - **No barometer or altitude model.** Distance is horizontal.
 - **Map-matched pull assumes you are on the way's centreline ± its half-width.** On very wide roads the pull is weak
   by design; on unmapped service lanes next to a mapped road the matcher can wrongly prefer the road for a few
@@ -88,8 +91,8 @@ measured in simulation (see [validation.md](validation.md)) unless it says other
 
 ### App
 
-- **The process can be killed.** The foreground service makes this unlikely, but if Android kills the app the run
-  in progress is lost (the trace up to that point remains on disk). There is no resume-after-kill.
+- **A killed run is recovered, not resumed.** If Android kills the app mid-run, the run ends there and is saved from
+  its trace on the next launch; nothing is tracked between the kill and a new run.
 - **Dark theme only** for the map (BombayChitra's light style is shipped but not wired to a setting).
 - **No export** (GPX/FIT) and no sync. Runs stay on the phone.
 - **English only.**
