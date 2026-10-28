@@ -90,7 +90,12 @@ class Tracker(
     private var runningTimeMs = 0L
 
     private val _events = ArrayDeque<CorrectionEvent>()
+    /** The most recent corrections (at most [MAX_EVENTS]); use [eventCount] for totals over the whole run. */
     val events: List<CorrectionEvent> get() = _events.toList()
+    private val eventCounts = IntArray(CorrectionEvent.Kind.entries.size)
+
+    /** How many corrections of [kind] were made since the tracker was created, including ones no longer in [events]. */
+    fun eventCount(kind: CorrectionEvent.Kind): Int = eventCounts[kind.ordinal]
 
     /** The corrected track: one list per continuous stretch (a recovery after an outage starts a new one). */
     private val _trail = ArrayList<MutableList<LatLon>>()
@@ -362,6 +367,7 @@ class Tracker(
 
     private fun event(t: Long, p: LatLon, kind: CorrectionEvent.Kind, issue: FixIssue? = null, detail: String = "") {
         _events.addLast(CorrectionEvent(t, p, kind, issue, detail))
+        eventCounts[kind.ordinal]++
         while (_events.size > MAX_EVENTS) _events.removeFirst()
     }
 
