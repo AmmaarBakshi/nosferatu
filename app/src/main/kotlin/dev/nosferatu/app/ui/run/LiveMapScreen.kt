@@ -46,6 +46,7 @@ fun LiveMapScreen(onOpenMapData: () -> Unit, modifier: Modifier = Modifier) {
     var fix by remember { mutableStateOf<GpsFix?>(null) }
     var follow by remember { mutableStateOf(true) }
 
+    LaunchedEffect(Unit) { container.mapData.refresh() }
     LaunchedEffect(permissions.granted) {
         if (permissions.granted) container.gps.fixes().collect { fix = it }
     }

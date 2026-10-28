@@ -15,6 +15,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
@@ -37,6 +38,8 @@ fun MapDataScreen(modifier: Modifier = Modifier, extra: @Composable () -> Unit =
     val container = LocalContext.current.container
     val tiles by container.mapData.tiles.collectAsState()
     val scope = rememberCoroutineScope()
+    // Tiles may have been copied in by hand (adb push) since the app started.
+    LaunchedEffect(Unit) { container.mapData.refresh() }
 
     Column(
         modifier.fillMaxSize().verticalScroll(rememberScrollState()).statusBarsPadding().padding(16.dp),
