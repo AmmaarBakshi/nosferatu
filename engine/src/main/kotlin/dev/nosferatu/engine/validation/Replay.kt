@@ -6,6 +6,7 @@ import dev.nosferatu.engine.geo.LatLon
 import dev.nosferatu.engine.track.TrackSnapshot
 import dev.nosferatu.engine.track.Tracker
 import dev.nosferatu.engine.trace.TraceEvent
+import dev.nosferatu.engine.trace.TraceFormat
 import kotlin.math.ceil
 
 /** The tracker's output next to the truth, once per second. */
@@ -13,7 +14,8 @@ data class ReplayStep(val timeMs: Long, val truth: TraceEvent.Truth?, val snapsh
 
 /**
  * Feeds a trace through a [Tracker] exactly as the app does: sensor samples as they come, GPS fixes as they come,
- * and a tick every second so time advances during GPS outages.
+ * and a tick every second so time advances during GPS outages. Between [TraceFormat.PAUSE] and [TraceFormat.RESUME]
+ * notes there are no ticks, and the tracker is resumed as the app resumes it.
  */
 object Replay {
     fun run(events: List<TraceEvent>, tracker: Tracker, tickMs: Long = 1000): List<ReplayStep> {
@@ -25,8 +27,9 @@ object Replay {
         var lastRaw: LatLon? = null
         var rawFresh = false
         var last: TrackSnapshot = TrackSnapshot.empty(sorted.first().timeMs)
+        var paused = false
         for (e in sorted) {
-            while (e.timeMs >= nextTick) {
+            while (!paused && e.timeMs >= nextTick) {
                 last = tracker.tick(nextTick)
                 steps += ReplayStep(nextTick, pendingTruth, last, if (rawFresh) lastRaw else null)
                 rawFresh = false
@@ -41,9 +44,17 @@ object Replay {
                     rawFresh = true
                 }
                 is TraceEvent.Truth -> pendingTruth = e
-                is TraceEvent.Note -> Unit
+                is TraceEvent.Note -> when (e.text) {
+                    TraceFormat.PAUSE -> paused = true
+                    TraceFormat.RESUME -> if (paused) {
+                        paused = false
+                        tracker.resume()
+                        nextTick = e.timeMs + tickMs
+                    }
+                }
             }
         }
+        if (paused) return steps
         last = tracker.tick(nextTick)
         steps += ReplayStep(nextTick, pendingTruth, last, if (rawFresh) lastRaw else null)
         return steps
