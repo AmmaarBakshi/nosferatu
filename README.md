@@ -15,7 +15,8 @@ gyroscope.
 - **Running detection with evidence.** A hidden Markov model over cadence, step regularity and landing impact. A
   brisk walk at 7 km/h stays a walk; a fast run at 18 km/h is still a run; a bus ride is not a run.
 - **Everything is auditable.** A diagnostics view shows raw fixes, rejected and down-weighted fixes, the matched way,
-  the classifier's posterior and its evidence. Every run's raw sensor stream is saved and can be replayed.
+  the classifier's posterior and its evidence. Every run's raw sensor stream is saved and can be replayed; a run the
+  app died in is rebuilt from it at the next launch.
 
 <p align="center">
   <img src="docs/screenshots/run.png" width="260" alt="A run in progress over BombayChitra's dark map">
