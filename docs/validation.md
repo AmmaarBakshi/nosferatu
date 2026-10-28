@@ -208,7 +208,7 @@ keep the drain low:
 - The accelerometer and gyroscope run at 50 Hz, batched by the sensor hub for 500 ms, so the CPU wakes twice a second
   rather than 100 times.
 - One partial wake lock is held during a run and nowhere else.
-- There is no network use at all.
+- There is no network use during a run. The network is used only to download the map tiles, once.
 
 To measure it on a phone, run `adb shell dumpsys batterystats --reset`, do a 30-minute run with the screen off, then
 run `adb shell dumpsys batterystats dev.nosferatu`. That still needs doing.
