@@ -44,7 +44,8 @@ def fetch_styles(server: str) -> None:
         if "bc" not in style.get("sources", {}):
             sys.exit(f"{url}: no 'bc' source, not a BombayChitra style")
         # Keep BombayChitra's style intact; only make the output stable and readable for diffs.
-        (out / f"{theme}.json").write_text(json.dumps(style, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+        text = json.dumps(style, ensure_ascii=False, indent=1) + "\n"
+        (out / f"{theme}.json").write_text(text, encoding="utf-8", newline="\n")
         print(f"styles/{theme}.json  {len(style['layers'])} layers")
 
 
