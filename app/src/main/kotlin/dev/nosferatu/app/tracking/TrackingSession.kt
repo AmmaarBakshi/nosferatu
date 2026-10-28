@@ -30,7 +30,10 @@ data class LiveState(
     val snapshot: TrackSnapshot? = null,
     val trail: List<List<LatLon>> = emptyList(),
     val rawFixes: List<LatLon> = emptyList(),
+    /** The most recent corrections, for the map and the diagnostics list. */
     val events: List<CorrectionEvent> = emptyList(),
+    /** Totals over the whole run, by kind. */
+    val eventCounts: Map<CorrectionEvent.Kind, Int> = emptyMap(),
     val matchedRoad: List<LatLon> = emptyList(),
     val elapsedMs: Long = 0,
     val runId: String? = null,
@@ -110,9 +113,9 @@ class TrackingSession(
                 movingTimeMs = it.movingTimeMs,
                 runningTimeMs = it.runningTimeMs,
                 steps = it.stepsTotal,
-                rejectedFixes = tracker.events.count { e -> e.kind == CorrectionEvent.Kind.Rejected },
-                roadCorrections = tracker.events.count { e -> e.kind == CorrectionEvent.Kind.RoadPull },
-                gpsLosses = tracker.events.count { e -> e.kind == CorrectionEvent.Kind.GpsLost },
+                rejectedFixes = tracker.eventCount(CorrectionEvent.Kind.Rejected),
+                roadCorrections = tracker.eventCount(CorrectionEvent.Kind.RoadPull),
+                gpsLosses = tracker.eventCount(CorrectionEvent.Kind.GpsLost),
                 track = tracker.trail.map { stretch -> stretch.map { p -> listOf(p.lat, p.lon) } },
                 usedMap = adapter != null,
             )
@@ -163,6 +166,7 @@ class TrackingSession(
             trail = tracker.trail,
             rawFixes = raw.toList(),
             events = tracker.events.takeLast(MAX_EVENTS),
+            eventCounts = CorrectionEvent.Kind.entries.associateWith(tracker::eventCount),
             matchedRoad = if (segment != null && adapter != null) adapter.geometry(segment) else emptyList(),
             elapsedMs = accumulatedMs + if (_state.value.status == SessionStatus.Tracking) now - activeSinceMs else 0,
         )
