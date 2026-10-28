@@ -6,6 +6,7 @@ import android.os.SystemClock
 import dev.nosferatu.app.data.RunStore
 import dev.nosferatu.app.data.RunSummary
 import dev.nosferatu.app.data.TraceWriter
+import dev.nosferatu.app.data.summaryOf
 import dev.nosferatu.app.sensors.GpsSource
 import dev.nosferatu.app.sensors.ImuSource
 import dev.nosferatu.bombaychitra.BombayChitraAdapter
@@ -106,24 +107,7 @@ class TrackingSession(
         stopListening()
         trace?.close()
         trace = null
-        val s = _state.value.snapshot
-        val summary = s?.let {
-            RunSummary(
-                id = runId,
-                startedAtWallMs = startedWallMs,
-                durationMs = accumulatedMs,
-                distanceM = it.distanceM,
-                runningDistanceM = it.runningDistanceM,
-                movingTimeMs = it.movingTimeMs,
-                runningTimeMs = it.runningTimeMs,
-                steps = it.stepsTotal,
-                rejectedFixes = tracker.eventCount(CorrectionEvent.Kind.Rejected),
-                roadCorrections = tracker.eventCount(CorrectionEvent.Kind.RoadPull),
-                gpsLosses = tracker.eventCount(CorrectionEvent.Kind.GpsLost),
-                track = tracker.trail.map { stretch -> stretch.map { p -> listOf(p.lat, p.lon) } },
-                usedMap = adapter != null,
-            )
-        }
+        val summary = _state.value.snapshot?.let { summaryOf(runId, startedWallMs, accumulatedMs, it, tracker, usedMap = adapter != null) }
         _state.value = _state.value.copy(status = SessionStatus.Idle, elapsedMs = accumulatedMs)
         onSaved(summary)
         thread.quitSafely()

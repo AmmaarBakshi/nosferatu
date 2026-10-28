@@ -1,6 +1,9 @@
 package dev.nosferatu.app.data
 
 import android.content.Context
+import dev.nosferatu.engine.track.CorrectionEvent
+import dev.nosferatu.engine.track.TrackSnapshot
+import dev.nosferatu.engine.track.Tracker
 import dev.nosferatu.engine.trace.TraceEvent
 import dev.nosferatu.engine.trace.TraceFormat
 import kotlinx.coroutines.Dispatchers
@@ -29,6 +32,34 @@ data class RunSummary(
     val gpsLosses: Int,
     val track: List<List<List<Double>>>,
     val usedMap: Boolean,
+    /** Rebuilt from its trace after the app was closed mid-run; the last few seconds may be missing. */
+    val recovered: Boolean = false,
+)
+
+/** The summary of a run as [tracker] ended it; [last] is the tracker's last output. */
+fun summaryOf(
+    id: String,
+    startedAtWallMs: Long,
+    durationMs: Long,
+    last: TrackSnapshot,
+    tracker: Tracker,
+    usedMap: Boolean,
+    recovered: Boolean = false,
+) = RunSummary(
+    id = id,
+    startedAtWallMs = startedAtWallMs,
+    durationMs = durationMs,
+    distanceM = last.distanceM,
+    runningDistanceM = last.runningDistanceM,
+    movingTimeMs = last.movingTimeMs,
+    runningTimeMs = last.runningTimeMs,
+    steps = last.stepsTotal,
+    rejectedFixes = tracker.eventCount(CorrectionEvent.Kind.Rejected),
+    roadCorrections = tracker.eventCount(CorrectionEvent.Kind.RoadPull),
+    gpsLosses = tracker.eventCount(CorrectionEvent.Kind.GpsLost),
+    track = tracker.trail.map { stretch -> stretch.map { p -> listOf(p.lat, p.lon) } },
+    usedMap = usedMap,
+    recovered = recovered,
 )
 
 /**
