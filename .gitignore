@@ -1,0 +1,36 @@
+# Gradle / Android
+.gradle/
+.kotlin/
+build/
+local.properties
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+*.ap_
+*.dex
+*.hprof
+
+# Signing material must never be committed
+*.jks
+*.keystore
+keystore.properties
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+.fleet/
+bin/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# BombayChitra data is downloaded or extracted, never committed (see docs/bombaychitra.md)
+data/
+app/src/main/assets/bombaychitra/graph.db
+
+# Recorded runs may contain where people live
+traces/private/
