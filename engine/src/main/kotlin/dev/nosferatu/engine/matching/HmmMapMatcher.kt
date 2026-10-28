@@ -82,7 +82,7 @@ class HmmMapMatcher(
         val candidates = network.candidates(fix, radius, maxCandidates)
 
         val emissions = candidates.map { emission(it, sigma, headingDeg) }
-        val offEmission = logGauss(offRoadSigmas * sigma, sigma)
+        val offEmission = logDistance(offRoadSigmas * sigma, sigma)
 
         val prevFix = previousFix
         val gap = (timeMs - previousTimeMs) / 1000.0
@@ -123,7 +123,7 @@ class HmmMapMatcher(
     }
 
     private fun emission(c: RoadCandidate, sigma: Double, headingDeg: Double?): Double {
-        var e = logGauss(c.distanceM, sigma)
+        var e = logDistance(c.distanceM, sigma)
         if (headingDeg != null) {
             // Bidirectional: compare lines, not directions. sin² is 0 when parallel, 1 when perpendicular.
             val d = Math.toRadians(Geo.headingDifference(c.bearingDeg, headingDeg))
@@ -138,11 +138,25 @@ class HmmMapMatcher(
 
     private fun transition(from: RoadCandidate?, to: RoadCandidate?, straight: Double, maxRoute: Double): Double = when {
         from == null && to == null -> ln(0.9)
-        from == null || to == null -> ln(0.04)
+        // Leaving the network takes sustained evidence; coming back is easier. A genuine unmapped path still wins,
+        // because there every way's emission is hopeless, while a single outlier no longer drags the match off.
+        to == null -> ln(0.01)
+        from == null -> ln(0.1)
         else -> {
             val route = network.networkDistance(from, to, maxRoute)
             if (route == null) UNREACHABLE else -abs(route - straight) / beta
         }
+    }
+
+    /**
+     * GPS error is heavy-tailed (multipath in a street canyon throws fixes 3–4σ out far more often than a Gaussian
+     * allows), so distances are scored with a mixture: 90 % N(0, σ) and 10 % N(0, 3σ).
+     */
+    private fun logDistance(d: Double, sigma: Double): Double {
+        val a = ln(0.9) + logGauss(d, sigma)
+        val b = ln(0.1) + logGauss(d, 3 * sigma)
+        val m = max(a, b)
+        return m + ln(exp(a - m) + exp(b - m))
     }
 
     private fun logGauss(d: Double, sigma: Double): Double = -0.5 * (d / sigma) * (d / sigma) - ln(sigma)
