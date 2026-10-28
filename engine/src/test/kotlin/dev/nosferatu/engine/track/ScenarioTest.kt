@@ -187,6 +187,8 @@ class ScenarioTest {
         val outage = listOf(GpsFault.Outage(140, 165))
         val withGyro = scenario("outage at a corner", corner, legs, faults = outage)
         val m = scenario("outage at a corner, no gyro", corner, legs, faults = outage, drop = { it is TraceEvent.Gyro })
+        // The same without the map, for the report: a measurement, not a requirement.
+        scenario("  … and no map either", corner, legs, network = null, faults = outage, drop = { it is TraceEvent.Gyro })
         println("    (with gyroscope p95 ${"%.1f".format(withGyro.correctedErrorP95M)} m)")
         assertTrue(m.runningRecall!! > 0.9, "recall ${m.runningRecall}")
         assertTrue(kotlin.math.abs(m.distanceErrorPct) < 6.0, "distance error ${m.distanceErrorPct}%")
