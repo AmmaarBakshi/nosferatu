@@ -1,6 +1,7 @@
 package dev.nosferatu.bombaychitra
 
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -55,6 +56,34 @@ object BombayChitraStyle {
         )
         val rewritten = JsonObject(style + ("sources" to newSources) + ("glyphs" to JsonPrimitive(glyphsUri)))
         return json.encodeToString(JsonObject.serializer(), rewritten)
+    }
+
+    /**
+     * BombayChitra's source layers that a runner doesn't need on the move: thousands of places and house numbers
+     * that bury the route at street zoom. Hidden on the run map only; the layers stay in the style, unchanged.
+     */
+    val QUIET_HIDDEN: Set<String> = setOf("pois", "addresses")
+
+    /**
+     * Turns off every layer drawn from one of [sourceLayers] by setting its `layout.visibility` to `none`. Nothing
+     * else about the layer changes, so the result is still BombayChitra's style and can be shown again at runtime.
+     */
+    fun hidingSourceLayers(style: String, sourceLayers: Set<String>): String {
+        val root = json.parseToJsonElement(style).jsonObject
+        val layers = root["layers"] as? JsonArray ?: throw UnsupportedStyleException("style has no layers")
+        val updated = JsonArray(
+            layers.map { el ->
+                val layer = el.jsonObject
+                val sourceLayer = (layer["source-layer"] as? JsonPrimitive)?.content
+                if (sourceLayer !in sourceLayers) {
+                    layer
+                } else {
+                    val layout = (layer["layout"] as? JsonObject).orEmpty() + ("visibility" to JsonPrimitive("none"))
+                    JsonObject(layer + ("layout" to JsonObject(layout)))
+                }
+            },
+        )
+        return json.encodeToString(JsonObject.serializer(), JsonObject(root + ("layers" to updated)))
     }
 
     /** The style URL of a running BombayChitra server; it needs no rewriting. */
