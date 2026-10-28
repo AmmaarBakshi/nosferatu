@@ -34,3 +34,6 @@ app/src/main/assets/bombaychitra/graph.db
 
 # Recorded runs may contain where people live
 traces/private/
+
+# Python
+__pycache__/
