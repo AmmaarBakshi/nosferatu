@@ -5,6 +5,7 @@ import android.content.Context
 import dev.nosferatu.app.data.MapDataRepository
 import dev.nosferatu.app.data.RoadGraphRepository
 import dev.nosferatu.app.data.RunStore
+import dev.nosferatu.app.data.Settings
 import dev.nosferatu.app.map.MapStyleProvider
 import dev.nosferatu.app.sensors.GpsSource
 import dev.nosferatu.app.sensors.ImuSource
@@ -22,6 +23,7 @@ class AppContainer(context: Context) {
     val gps = GpsSource(context)
     val imu = ImuSource(context)
     val runs = RunStore(context)
+    val settings = Settings(context)
     val graph = RoadGraphRepository(context, mapData)
     val tracking = TrackingController(context, gps, imu, runs, graph, scope)
 }
