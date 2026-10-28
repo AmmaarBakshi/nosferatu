@@ -69,6 +69,27 @@ class ScenarioTest {
     }
 
     @Test
+    fun theBoundsHoldAcrossSeeds() {
+        // One seed per scenario could be a lucky one: the GPS noise, the gait and the faults vary with the seed.
+        val faults = listOf(GpsFault.Jump(100, 104, 80.0, -60.0), GpsFault.Outage(200, 225))
+        val runs = (1L..10L).map { seed -> scenario("seed $seed: jump + outage", loop, listOf(Leg.stand(10), Leg.run(400, 3.4)), faults = faults, seed = seed) }
+        println(
+            "    across seeds: err mean %.1f–%.1f m, p95 %.1f–%.1f m, distance %+.1f%% to %+.1f%%, recall %.2f–%.2f".format(
+                runs.minOf { it.correctedErrorMeanM }, runs.maxOf { it.correctedErrorMeanM },
+                runs.minOf { it.correctedErrorP95M }, runs.maxOf { it.correctedErrorP95M },
+                runs.minOf { it.distanceErrorPct }, runs.maxOf { it.distanceErrorPct },
+                runs.minOf { it.runningRecall!! }, runs.maxOf { it.runningRecall!! },
+            ),
+        )
+        for (m in runs) {
+            assertTrue(m.correctedErrorMeanM < m.rawErrorMeanM)
+            assertTrue(kotlin.math.abs(m.distanceErrorPct) < 5.0, "distance error ${m.distanceErrorPct}%")
+            assertTrue(m.runningRecall!! > 0.95)
+            assertTrue(m.recoveryS!! <= 10, "recovery ${m.recoveryS} s")
+        }
+    }
+
+    @Test
     fun briskWalkIsNotCountedAsRunning() {
         val m = scenario("brisk walk 7.2 km/h", loop, listOf(Leg.stand(10), Leg.briskWalk(400, 2.0)))
         assertTrue(m.falseRunningS <= 20, "false running ${m.falseRunningS} s")
