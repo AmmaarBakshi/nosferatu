@@ -46,6 +46,7 @@ import dev.nosferatu.app.data.GraphState
 import dev.nosferatu.app.data.RunSummary
 import dev.nosferatu.app.data.TilesState
 import dev.nosferatu.app.map.BombayChitraMap
+import dev.nosferatu.app.map.OverlayColors
 import dev.nosferatu.app.tracking.LiveState
 import dev.nosferatu.app.tracking.SessionStatus
 import dev.nosferatu.app.ui.component.EmptyState
@@ -287,3 +288,12 @@ private fun SavedPanel(run: RunSummary, onDone: () -> Unit, onOpen: () -> Unit) 
         Button(onClick = onOpen, Modifier.weight(1f)) { Text("DETAILS", style = MaterialTheme.typography.labelLarge) }
     }
 }
+
+@Composable
+fun overlayColors() = OverlayColors(
+    accent = MaterialTheme.colorScheme.primary,
+    raw = NfTheme.colors.rawGps,
+    matched = NfTheme.colors.matchedRoad,
+    rejected = NfTheme.colors.moderate,
+    halo = MaterialTheme.colorScheme.background,
+)

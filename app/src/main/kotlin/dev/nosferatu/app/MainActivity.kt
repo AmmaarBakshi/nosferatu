@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.DirectionsRun
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -23,14 +24,19 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import dev.nosferatu.app.ui.history.HistoryScreen
+import dev.nosferatu.app.ui.history.RunDetailScreen
 import dev.nosferatu.app.ui.mapdata.MapDataScreen
-import dev.nosferatu.app.ui.run.LiveMapScreen
+import dev.nosferatu.app.ui.run.RunScreen
 import dev.nosferatu.app.ui.theme.NosferatuTheme
 
 private enum class Tab(val route: String, val label: String, val icon: ImageVector) {
     Run("run", "Run", Icons.Outlined.DirectionsRun),
+    History("history", "History", Icons.Outlined.History),
     Map("map", "Map", Icons.Outlined.Layers),
 }
+
+private const val RUN_DETAIL = "runs"
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -56,7 +62,7 @@ class MainActivity : ComponentActivity() {
                         NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainerLow) {
                             for (tab in Tab.entries) {
                                 NavigationBarItem(
-                                    selected = current == tab.route,
+                                    selected = current == tab.route || (tab == Tab.History && current?.startsWith(RUN_DETAIL) == true),
                                     onClick = { go(tab) },
                                     icon = { Icon(tab.icon, contentDescription = tab.label) },
                                     label = { Text(tab.label.uppercase(), style = MaterialTheme.typography.labelMedium) },
@@ -69,7 +75,13 @@ class MainActivity : ComponentActivity() {
                     },
                 ) { padding ->
                     NavHost(nav, startDestination = Tab.Run.route, modifier = Modifier.padding(padding)) {
-                        composable(Tab.Run.route) { LiveMapScreen(onOpenMapData = { go(Tab.Map) }) }
+                        composable(Tab.Run.route) {
+                            RunScreen(onOpenMapData = { go(Tab.Map) }, onOpenRun = { id -> nav.navigate("$RUN_DETAIL/$id") })
+                        }
+                        composable(Tab.History.route) { HistoryScreen(onOpen = { id -> nav.navigate("$RUN_DETAIL/$id") }) }
+                        composable("$RUN_DETAIL/{id}") { entry ->
+                            RunDetailScreen(id = entry.arguments?.getString("id").orEmpty(), onBack = { nav.popBackStack() })
+                        }
                         composable(Tab.Map.route) { MapDataScreen() }
                     }
                 }
