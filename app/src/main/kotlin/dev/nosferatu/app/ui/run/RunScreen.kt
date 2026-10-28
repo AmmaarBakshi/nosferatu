@@ -85,6 +85,8 @@ fun RunScreen(onOpenMapData: () -> Unit, onOpenRun: (String) -> Unit, modifier: 
     LaunchedEffect(Unit) { container.graph.load() }
     // Before a run, show raw fixes. During one, the session owns the GPS.
     LaunchedEffect(permissions.granted, idle) {
+        // A fix from before the run is stale by the time it ends; wait for a new one.
+        fix = null
         if (permissions.granted && idle) container.gps.fixes().catch { }.collect { fix = it }
     }
 
@@ -248,7 +250,7 @@ private fun RunPanel(live: LiveState, diagnostics: Boolean, onPause: () -> Unit,
         MetricTile("Cadence", NfFormat.cadence(snap?.motion?.cadenceSpm), detail = "spm")
     }
     if (diagnostics) {
-        DiagnosticsBlock(live, Modifier.fillMaxWidth().heightIn(max = 280.dp).verticalScroll(rememberScrollState()))
+        DiagnosticsBlock(live, Modifier.fillMaxWidth().heightIn(max = 220.dp).verticalScroll(rememberScrollState()))
     } else if (snap != null) {
         Text(
             snap.activity.evidence.take(2).joinToString(" · ") { "${it.label} ${it.value}" }.ifEmpty { "Gathering motion data…" },
