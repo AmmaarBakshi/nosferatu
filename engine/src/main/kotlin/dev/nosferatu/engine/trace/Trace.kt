@@ -34,11 +34,16 @@ sealed interface TraceEvent {
  * a,<t>,<x>,<y>,<z>        accelerometer, m/s², phone frame
  * y,<t>,<x>,<y>,<z>        gyroscope, rad/s, phone frame
  * T,<t>,<lat>,<lon>,<activity>
+ * n,<t>,pause / n,<t>,resume   the runner paused and resumed tracking
  * ```
  * Times are milliseconds on the device's monotonic clock (elapsedRealtime).
  */
 object TraceFormat {
     const val HEADER = "# nosferatu-trace 1"
+
+    /** Notes the app writes when the runner pauses and resumes, so a replay leaves the paused time out. */
+    const val PAUSE = "pause"
+    const val RESUME = "resume"
 
     fun write(e: TraceEvent, out: Writer) {
         out.write(encode(e))
