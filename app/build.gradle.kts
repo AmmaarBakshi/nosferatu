@@ -34,6 +34,16 @@ android {
         buildConfig = true
     }
 
+    splits {
+        // MapLibre's native libraries are ~10–13 MB per ABI; a phone needs one. The universal APK stays for sideloading.
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "armeabi-v7a", "x86_64", "x86")
+            isUniversalApk = true
+        }
+    }
+
     androidResources {
         // The road graph is a SQLite file read in place; compressing it would force a copy on every start.
         noCompress += listOf("db", "pbf")
