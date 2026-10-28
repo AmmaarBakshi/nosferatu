@@ -313,7 +313,14 @@ class Tracker(
             lastCountedPos = p
             return
         }
-        val moving = activity.activity != Activity.Stationary && motion?.still != true
+        // Only distance on foot counts: a bus ride is movement, but not part of a run or a walk. While the state is
+        // unknown, detected steps still prove the person is on foot (transitions start out unknown).
+        val onFoot = when (activity.activity) {
+            Activity.Walking, Activity.Jogging, Activity.Running -> true
+            Activity.Unknown -> motion?.cadenceSpm != null || !imuSeen
+            Activity.Stationary -> false
+        }
+        val moving = onFoot && motion?.still != true
         val step = (p - last).length()
         // Ignore wobble below the noise floor; it is drift, not progress.
         val floor = (0.5 * kf.positionSigma).coerceIn(1.0, 6.0)
