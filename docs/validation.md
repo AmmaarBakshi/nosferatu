@@ -73,7 +73,7 @@ Errors are in metres; "raw" is raw GPS over the same seconds.
 
 | Scenario | Plan item | Error mean / p95 | Raw mean / p95 | Distance | Run P / R | Activity | False run | Recovery |
 |---|---|---|---|---|---|---|---|---|
-| Normal run, 9 min loop | normal run | 2.5 / 5.4 | 5.3 / 10.4 | 1760 of 1766 m (−0.3 %) | 1.00 / 1.00 | 100 % | 1 s | – |
+| Normal run, 9 min round a loop | normal run | 2.5 / 5.4 | 5.3 / 10.4 | 1760 of 1766 m (−0.3 %) | 1.00 / 1.00 | 100 % | 1 s | – |
 | Brisk walk, 7.2 km/h | brisk walk | 1.9 / 2.9 | 5.3 / 10.7 | 797 of 798 m (−0.1 %) | – | 100 % | 0 s | – |
 | Run, 9.4 km/h | > 8 km/h | 2.0 / 3.6 | 5.0 / 10.1 | −0.4 % | 1.00 / 1.00 | 69 % | 0 s | – |
 | Run, 13.7 km/h | > 8 km/h | 2.1 / 3.9 | 5.0 / 10.1 | +0.7 % | 1.00 / 1.00 | 100 % | 0 s | – |
@@ -114,23 +114,21 @@ Notes on individual rows:
 - **9.4 km/h.** It is labelled "running" in the truth and the classifier calls part of it "jogging". Both count as
   running, so recall is 1.00, but the exact class matches 69 % of the time. The jogging/running boundary is fuzzy by
   design, near 9–10 km/h.
-- **Bus ride.** It is followed accurately (1.9 m), but none of its 1192 m counts as on-foot distance: there are no
-  steps and the speed is too high for a person.
+- **Bus ride.** It is followed accurately (1.9 m), but none of its 1192 m counts as on-foot distance, because there are
+  no steps.
 - **Wrong first fixes.** The mean (9.0 m) is above the p95 (5.9 m) because the first three seconds are 350 m out and
   dominate the mean. The track is back within 10 m four seconds after the bad fixes stop.
 - **No gyroscope.** The cost sits in the ten or so seconds after the corner, before GPS returns: the course is
   held east while the runner has turned north. The p95 hides those seconds; the mean shows them (2.1 m with a
   gyroscope, 2.8 m without, 3.7 m without the map as well).
-- **Sharp turns and stops.** The 3 s of false running are the seconds right after stopping, while the classifier's
-  window still holds running steps.
 - **Bearing stuck.** Compared with the same run with an honest bearing (2.4 / 5.4 m, −0.2 %), a stuck bearing costs
   0.7 m of mean error and 2 % of distance. It used to cost far more; see below.
 
 ### What these numbers do and do not show
 
 - **The raw distance is a strawman.** The simulator's GPS noise is independent from fix to fix, so summing raw fixes
-  overcounts by 22–257 %, and more the slower the movement. Real chipsets smooth their output, so a naive app on a real phone would overcount far less.
-  The raw *position* error is the fairer comparison, and the tables use it.
+  overcounts by 22–257 %, and more the slower the movement. Real chipsets smooth their output, so a naive app on a
+  real phone would overcount far less. The raw *position* error is the fairer comparison, and the tables use it.
 - **The simulator and the engine share assumptions.** They were written for the same project. The gait models that
   generate the motion are the ones the classifier was tuned to recognise, so these results are an upper bound until
   real traces exist.
