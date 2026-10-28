@@ -14,6 +14,7 @@ import dev.nosferatu.engine.track.CorrectionEvent
 import dev.nosferatu.engine.track.TrackSnapshot
 import dev.nosferatu.engine.track.Tracker
 import dev.nosferatu.engine.trace.TraceEvent
+import dev.nosferatu.engine.trace.TraceFormat
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -87,11 +88,14 @@ class TrackingSession(
         if (_state.value.status != SessionStatus.Tracking) return@post
         stopListening()
         accumulatedMs += SystemClock.elapsedRealtime() - activeSinceMs
+        trace?.write(TraceEvent.Note(SystemClock.elapsedRealtime(), TraceFormat.PAUSE))
+        trace?.flush()
         _state.value = _state.value.copy(status = SessionStatus.Paused, elapsedMs = accumulatedMs)
     }
 
     fun resume() = handler.post {
         if (_state.value.status != SessionStatus.Paused) return@post
+        trace?.write(TraceEvent.Note(SystemClock.elapsedRealtime(), TraceFormat.RESUME))
         tracker.resume()
         listen()
     }
