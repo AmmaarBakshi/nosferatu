@@ -18,6 +18,7 @@ import org.maplibre.android.MapLibre
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
+import org.maplibre.android.geometry.LatLngBounds
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
@@ -28,6 +29,7 @@ import org.maplibre.android.maps.Style
  *
  * @param styleJson the rewritten BombayChitra style (see [MapStyleProvider]).
  * @param follow keep the camera on the estimated position.
+ * @param frame points to fit in view once the map is ready (a finished run's track); ignored while following.
  */
 @Composable
 fun BombayChitraMap(
@@ -36,6 +38,7 @@ fun BombayChitraMap(
     colors: OverlayColors,
     follow: Boolean,
     modifier: Modifier = Modifier,
+    frame: List<LatLon> = emptyList(),
     onUserGesture: () -> Unit = {},
 ) {
     val context = LocalContext.current
@@ -103,6 +106,18 @@ fun BombayChitraMap(
         if (!follow) return@LaunchedEffect
         val zoom = m.cameraPosition.zoom.coerceAtLeast(15.5)
         m.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(p.lat, p.lon), zoom), 600)
+    }
+
+    LaunchedEffect(map, frame) {
+        val m = map ?: return@LaunchedEffect
+        if (follow || frame.isEmpty()) return@LaunchedEffect
+        val update = if (frame.size == 1) {
+            CameraUpdateFactory.newLatLngZoom(LatLng(frame[0].lat, frame[0].lon), 16.0)
+        } else {
+            val bounds = LatLngBounds.Builder().apply { frame.forEach { include(LatLng(it.lat, it.lon)) } }.build()
+            CameraUpdateFactory.newLatLngBounds(bounds, 96)
+        }
+        m.moveCamera(update)
     }
 
     AndroidView(factory = { mapView }, modifier = modifier)
