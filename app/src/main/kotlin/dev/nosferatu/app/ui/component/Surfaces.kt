@@ -24,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -131,7 +132,8 @@ fun StatePill(label: String, color: Color, modifier: Modifier = Modifier, detail
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(50),
-        color = color.copy(alpha = 0.16f),
+        // Opaque, so the pill reads the same on a card and over a busy map.
+        color = color.copy(alpha = 0.16f).compositeOver(MaterialTheme.colorScheme.surfaceContainerLow),
         border = BorderStroke(1.dp, color),
     ) {
         Row(
