@@ -1,6 +1,8 @@
 package dev.nosferatu.engine.track
 
+import dev.nosferatu.engine.geo.Geo
 import dev.nosferatu.engine.geo.LatLon
+import dev.nosferatu.engine.model.GpsFix
 import dev.nosferatu.engine.road.RoadNetwork
 import dev.nosferatu.engine.road.TestNetwork
 import dev.nosferatu.engine.sim.GpsErrorModel
@@ -39,10 +41,11 @@ class ScenarioTest {
         rotations: List<Int> = emptyList(),
         seed: Long = 11,
         tamper: (TraceEvent) -> TraceEvent = { it },
+        faultEndS: Int? = faults.maxOfOrNull { it.toS },
     ): Metrics {
         val events = RunSimulator(route, legs, gps, faults, seed = seed, phoneRotationsAtS = rotations).generate().map(tamper)
         val steps = Replay.run(events, Tracker(network))
-        val m = Metrics.of(steps, faultEndS = faults.maxOfOrNull { it.toS })
+        val m = Metrics.of(steps, faultEndS = faultEndS)
         println(
             "%-28s err mean %5.1f p95 %5.1f (raw %5.1f / %5.1f) | dist %7.0f m vs %7.0f (%+.1f%%, raw %+.1f%%) | run P %s R %s | act %3.0f%% | false run %3d s | recovery %s".format(
                 name, m.correctedErrorMeanM, m.correctedErrorP95M, m.rawErrorMeanM, m.rawErrorP95M,
@@ -89,6 +92,41 @@ class ScenarioTest {
         assertTrue(m.correctedErrorMeanM < m.rawErrorMeanM, "corrected ${m.correctedErrorMeanM} m vs raw ${m.rawErrorMeanM} m")
         assertTrue(m.correctedErrorMeanM < honest.correctedErrorMeanM + 1.5, "stuck bearing costs too much accuracy")
         assertTrue(kotlin.math.abs(m.distanceErrorPct) < 4.0, "distance error ${m.distanceErrorPct}%")
+    }
+
+    @Test
+    fun aWrongFirstFixDoesNotLockOutTheRealOnes() {
+        // The first three fixes of a run come from 350 m away (a stale position from before the run).
+        var fixes = 0
+        val wrongStart: (TraceEvent) -> TraceEvent = { e ->
+            if (e is TraceEvent.Gps && fixes++ < 3) {
+                val p = Geo.destination(e.fix.position, 45.0, 350.0)
+                TraceEvent.Gps(e.fix.copy(lat = p.lat, lon = p.lon))
+            } else {
+                e
+            }
+        }
+        val m = scenario("wrong first fixes 350 m off", loop, listOf(Leg.run(400, 3.2)), tamper = wrongStart, faultEndS = 3)
+        assertTrue(m.recoveryS != null && m.recoveryS!! <= 10, "back on the real track after ${m.recoveryS} s")
+        assertTrue(kotlin.math.abs(m.distanceErrorPct) < 5.0, "distance error ${m.distanceErrorPct}%")
+    }
+
+    @Test
+    fun frozenFixesWhileRunningAreBridgedNotBelieved() {
+        // For 20 fixes the receiver repeats one fix (speed and all) while the runner keeps going.
+        var fixes = 0
+        var frozen: GpsFix? = null
+        val freeze: (TraceEvent) -> TraceEvent = { e ->
+            if (e is TraceEvent.Gps && fixes++ in 100 until 120) {
+                val f = frozen ?: e.fix.also { frozen = it }
+                TraceEvent.Gps(f.copy(timeMs = e.timeMs))
+            } else {
+                e
+            }
+        }
+        val m = scenario("GPS frozen for 20 s", loop, listOf(Leg.stand(10), Leg.run(300, 3.2)), tamper = freeze)
+        assertTrue(kotlin.math.abs(m.distanceErrorPct) < 4.0, "distance error ${m.distanceErrorPct}%")
+        assertTrue(m.correctedErrorP95M < 15.0, "p95 ${m.correctedErrorP95M} m")
     }
 
     @Test
