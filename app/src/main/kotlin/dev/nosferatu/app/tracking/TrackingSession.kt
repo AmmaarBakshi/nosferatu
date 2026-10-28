@@ -21,11 +21,12 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-enum class SessionStatus { Idle, Tracking, Paused }
+/** [Starting] covers the gap between pressing start and the first sensor registration (loading the road graph). */
+enum class SessionStatus { Starting, Tracking, Paused, Idle }
 
 /** Everything the UI shows about the current run. */
 data class LiveState(
-    val status: SessionStatus = SessionStatus.Idle,
+    val status: SessionStatus = SessionStatus.Starting,
     val snapshot: TrackSnapshot? = null,
     val trail: List<List<LatLon>> = emptyList(),
     val rawFixes: List<LatLon> = emptyList(),
