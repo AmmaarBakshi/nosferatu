@@ -47,6 +47,27 @@ class GpsSource(private val context: Context) {
         awaitClose { lm.removeUpdates(listener) }
     }
 
+    /**
+     * Registers for fixes on [looper] (the tracking thread). Returns a handle that unregisters; null when permission
+     * is missing, so the caller can report it instead of crashing.
+     */
+    @SuppressLint("MissingPermission")
+    fun register(looper: Looper, intervalMs: Long, onFix: (GpsFix) -> Unit, onEnabledChanged: (Boolean) -> Unit): AutoCloseable? {
+        val lm = manager ?: return null
+        if (!hasPermission()) return null
+        val listener = object : LocationListener {
+            override fun onLocationChanged(location: Location) = onFix(location.toFix())
+            override fun onProviderDisabled(provider: String) = onEnabledChanged(false)
+            override fun onProviderEnabled(provider: String) = onEnabledChanged(true)
+        }
+        return try {
+            lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, intervalMs, 0f, listener, looper)
+            AutoCloseable { lm.removeUpdates(listener) }
+        } catch (e: SecurityException) {
+            null
+        }
+    }
+
     companion object {
         fun Location.toFix(): GpsFix = GpsFix(
             timeMs = elapsedRealtimeNanos / 1_000_000,
