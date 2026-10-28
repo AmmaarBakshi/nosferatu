@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.DirectionsRun
@@ -49,6 +50,8 @@ class MainActivity : ComponentActivity() {
                 }
                 Scaffold(
                     containerColor = MaterialTheme.colorScheme.background,
+                    // The map runs under the status bar; each screen pads its own overlays.
+                    contentWindowInsets = WindowInsets(0),
                     bottomBar = {
                         NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainerLow) {
                             for (tab in Tab.entries) {
