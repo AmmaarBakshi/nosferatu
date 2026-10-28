@@ -81,6 +81,13 @@ class RunStore(context: Context) {
 
     fun traceFile(id: String): File = File(File(root, id), "trace.txt")
 
+    /** Runs with a trace but no summary: the app died before saving them. */
+    suspend fun unfinished(): List<String> = withContext(Dispatchers.IO) {
+        root.listFiles().orEmpty().filter { File(it, "trace.txt").isFile && !File(it, "summary.json").isFile }.map { it.name }
+    }
+
+    suspend fun readTrace(id: String): List<TraceEvent> = withContext(Dispatchers.IO) { RunRecovery.readTrace(traceFile(id).readText()) }
+
     fun openTrace(id: String): TraceWriter {
         val dir = File(root, id).apply { mkdirs() }
         return TraceWriter(File(dir, "trace.txt").bufferedWriter())
