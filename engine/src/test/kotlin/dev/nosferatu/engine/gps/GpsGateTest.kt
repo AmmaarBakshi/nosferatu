@@ -47,4 +47,38 @@ class GpsGateTest {
         // The rejected fix is not the new reference: the next normal fix is judged against the last good one.
         assertIs<FixVerdict.Accepted>(g.assess(fix(3000, Geo.destination(start, 0.0, 15.0))))
     }
+
+    @Test
+    fun aStaleCopyWhileMovingIsRejectedButStaticHoldIsNot() {
+        val g = GpsGate()
+        val moving = GpsFix(0, start.lat, start.lon, 5.0, speedMps = 3.0)
+        g.assess(moving)
+        assertEquals(FixVerdict.Rejected(FixIssue.Stale), g.assess(moving.copy(timeMs = 1000)))
+        // A chipset in static hold repeats the position with no speed: that is a still phone, not a stale fix.
+        val g2 = GpsGate()
+        val still = GpsFix(0, start.lat, start.lon, 5.0, speedMps = 0.0)
+        g2.assess(still)
+        assertIs<FixVerdict.Accepted>(g2.assess(still.copy(timeMs = 1000)))
+    }
+
+    @Test
+    fun aConsistentRunOfTeleportsBecomesTheNewReference() {
+        val g = GpsGate()
+        // A wrong first fix 350 m away, then the runner's real fixes.
+        g.assess(fix(0, Geo.destination(start, 45.0, 350.0)))
+        val verdicts = (1..6).map { i -> g.assess(fix(i * 1000L, Geo.destination(start, 90.0, 3.0 * i))) }
+        assertEquals(List(4) { FixVerdict.Rejected(FixIssue.ImpossibleSpeed) }, verdicts.take(4))
+        assertIs<FixVerdict.Reanchored>(verdicts[4])
+        assertIs<FixVerdict.Accepted>(verdicts[5])
+    }
+
+    @Test
+    fun aShortJumpDoesNotReanchor() {
+        val g = GpsGate()
+        g.assess(fix(0))
+        // Three fixes 300 m off, then back: the jump is rejected and the truth is accepted again.
+        val jump = (1..3).map { i -> g.assess(fix(i * 1000L, Geo.destination(start, 0.0, 300.0 + i))) }
+        assertEquals(List(3) { FixVerdict.Rejected(FixIssue.ImpossibleSpeed) }, jump)
+        assertIs<FixVerdict.Accepted>(g.assess(fix(4000, Geo.destination(start, 90.0, 4.0))))
+    }
 }
