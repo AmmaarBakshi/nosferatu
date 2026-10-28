@@ -41,9 +41,10 @@ class ScenarioTest {
         rotations: List<Int> = emptyList(),
         seed: Long = 11,
         tamper: (TraceEvent) -> TraceEvent = { it },
+        drop: (TraceEvent) -> Boolean = { false },
         faultEndS: Int? = faults.maxOfOrNull { it.toS },
     ): Metrics {
-        val events = RunSimulator(route, legs, gps, faults, seed = seed, phoneRotationsAtS = rotations).generate().map(tamper)
+        val events = RunSimulator(route, legs, gps, faults, seed = seed, phoneRotationsAtS = rotations).generate().filterNot(drop).map(tamper)
         val steps = Replay.run(events, Tracker(network))
         val m = Metrics.of(steps, faultEndS = faultEndS)
         println(
@@ -155,6 +156,20 @@ class ScenarioTest {
         assertTrue(m.correctedErrorP95M < 30.0, "p95 ${m.correctedErrorP95M} m through the outage")
         assertTrue(m.recoveryS!! <= 10)
         assertTrue(kotlin.math.abs(m.distanceErrorPct) < 6.0)
+    }
+
+    @Test
+    fun aPhoneWithoutAGyroscopeStillTracks() {
+        // Budget phones often ship without a gyroscope. The outage covers the corner at 480 m, where a turn rate matters.
+        val corner = route(0.0 to 0.0, 480.0 to 0.0, 480.0 to 480.0)
+        val legs = listOf(Leg.stand(10), Leg.run(280, 3.3))
+        val outage = listOf(GpsFault.Outage(140, 165))
+        val withGyro = scenario("outage at a corner", corner, legs, faults = outage)
+        val m = scenario("outage at a corner, no gyro", corner, legs, faults = outage, drop = { it is TraceEvent.Gyro })
+        println("    (with gyroscope p95 ${"%.1f".format(withGyro.correctedErrorP95M)} m)")
+        assertTrue(m.runningRecall!! > 0.9, "recall ${m.runningRecall}")
+        assertTrue(kotlin.math.abs(m.distanceErrorPct) < 6.0, "distance error ${m.distanceErrorPct}%")
+        assertTrue(m.recoveryS!! <= 10, "recovery ${m.recoveryS} s")
     }
 
     @Test
