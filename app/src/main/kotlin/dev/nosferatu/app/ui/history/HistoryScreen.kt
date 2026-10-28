@@ -71,7 +71,10 @@ private fun RunRow(run: RunSummary, onClick: () -> Unit) {
     NfCard(onClick = onClick) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
             SectionLabel(DATE.format(Date(run.startedAtWallMs)))
-            if (!run.usedMap) StatePill("No map", NfTheme.colors.unknown)
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (run.recovered) StatePill("Recovered", NfTheme.colors.moderate)
+                if (!run.usedMap) StatePill("No map", NfTheme.colors.unknown)
+            }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             MetricTile("Distance", NfFormat.km(run.distanceM), detail = "km")
