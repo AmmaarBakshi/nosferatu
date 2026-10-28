@@ -15,6 +15,7 @@ kotlin {
 
 dependencies {
     api(project(":engine"))
+    implementation(libs.kotlinx.serialization.json)
     testImplementation(libs.junit4)
     testImplementation(libs.kotlin.test)
     testImplementation(libs.sqlite.jdbc)
