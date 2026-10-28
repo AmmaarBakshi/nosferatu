@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import dev.nosferatu.app.container
+import dev.nosferatu.app.data.GraphState
 import dev.nosferatu.app.data.TilesState
 import dev.nosferatu.app.ui.component.EvidenceRow
 import dev.nosferatu.app.ui.component.NfCard
@@ -92,6 +93,8 @@ fun MapDataScreen(modifier: Modifier = Modifier, extra: @Composable () -> Unit =
             }
         }
 
+        RoadGraphCard()
+
         extra()
 
         Text(
@@ -103,3 +106,44 @@ fun MapDataScreen(modifier: Modifier = Modifier, extra: @Composable () -> Unit =
 }
 
 private fun mb(bytes: Long) = String.format(Locale.US, "%.1f MB", bytes / 1e6)
+
+/** The road and path graph Nosferatu checks fixes against: BombayChitra's routing tables, loaded on device. */
+@Composable
+private fun RoadGraphCard() {
+    val container = LocalContext.current.container
+    val graph by container.graph.state.collectAsState()
+    LaunchedEffect(Unit) { container.graph.load() }
+    NfCard {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            SectionLabel("Roads and paths")
+            when (graph) {
+                is GraphState.Ready -> StatePill("Loaded", NfTheme.colors.good)
+                GraphState.Loading -> StatePill("Loading", NfTheme.colors.moderate)
+                GraphState.NotBundled -> StatePill("Not bundled", NfTheme.colors.unknown)
+                is GraphState.Failed -> StatePill("Failed", NfTheme.colors.bad)
+            }
+        }
+        when (val g = graph) {
+            is GraphState.Ready -> {
+                val net = g.adapter.network.graph
+                EvidenceRow("Junctions", String.format(Locale.US, "%,d", net.vertexCount))
+                EvidenceRow("Way segments", String.format(Locale.US, "%,d", net.segmentCount))
+                EvidenceRow("Load time", "${g.loadMs} ms")
+                g.builtAt?.let { EvidenceRow("Built", it) }
+                Text(
+                    "Used to tell a GPS error from a real route: fixes are pulled towards the way you are on only when " +
+                        "the evidence says so, and paths missing from the map are kept as measured.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = NfTheme.colors.subtle,
+                )
+            }
+            GraphState.Loading -> LinearProgressIndicator(Modifier.fillMaxWidth())
+            GraphState.NotBundled -> Text(
+                "This build has no road graph, so tracking runs on GPS and motion alone. Build with " +
+                    "scripts/bombaychitra_assets.py graph, or place bombaychitra.db next to the tiles.",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            is GraphState.Failed -> Text(g.message, style = MaterialTheme.typography.bodyMedium, color = NfTheme.colors.bad)
+        }
+    }
+}
