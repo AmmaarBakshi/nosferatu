@@ -121,6 +121,18 @@ fun RunDetailScreen(id: String, onBack: () -> Unit, modifier: Modifier = Modifie
             EvidenceRow("Map", if (run.usedMap) "BombayChitra" else "none")
         }
 
+        if (run.recovered) {
+            NfCard {
+                SectionLabel("Recovered")
+                Text(
+                    "The app was closed during this run (revoking location access does that), so it was rebuilt from " +
+                        "its raw trace. The last few seconds before the app closed may be missing.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = NfTheme.colors.subtle,
+                )
+            }
+        }
+
         NfCard {
             SectionLabel("Raw trace")
             Text(
