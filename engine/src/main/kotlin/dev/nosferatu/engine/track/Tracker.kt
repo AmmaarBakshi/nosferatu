@@ -71,6 +71,11 @@ class Tracker(
     private var lastFix: GpsFix? = null
     private var lastAcceptedMs = Long.MIN_VALUE / 2
     private var lastAcceptedSigma = 10.0
+    /** Recent usable fixes, to check the Doppler bearing against the direction the fixes actually move. */
+    private val recentFixes = ArrayDeque<GpsFix>()
+    private var bearingDisagreements = 0
+    private var lastBearing: Double? = null
+    private var unchangedBearings = 0
     private var gpsLost = false
     private val rejectedRun = ArrayList<GpsFix>()
 
@@ -143,7 +148,9 @@ class Tracker(
         val f = frame ?: LocalFrame(fix.position).also { frame = it }
         val z = f.toLocal(fix.position)
         if (!kf.initialized) {
-            kf.reset(z, sigma, dopplerVelocity(fix) ?: Vec2.ZERO, if (dopplerVelocity(fix) != null) 0.5 else 2.0)
+            rememberFix(fix)
+            val doppler = dopplerVelocity(fix)
+            kf.reset(z, sigma, doppler?.first ?: Vec2.ZERO, if (doppler != null) 0.5 else 2.0)
             lastTimeMs = fix.timeMs
             accepted(fix, sigma)
             newTrailStretch()
@@ -156,7 +163,7 @@ class Tracker(
             rejectedRun += fix
             if (rejectedRun.size >= config.recoveryFixes && consistent(rejectedRun)) {
                 // The fixes agree with each other and not with us: trust them.
-                kf.reset(z, sigma, dopplerVelocity(fix) ?: Vec2.ZERO, 1.0)
+                kf.reset(z, sigma, dopplerVelocity(fix)?.first ?: Vec2.ZERO, 1.0)
                 matcher?.reset()
                 rejectedRun.clear()
                 event(fix.timeMs, fix.position, CorrectionEvent.Kind.Recovered, detail = "filter re-initialised on GPS")
@@ -181,7 +188,8 @@ class Tracker(
             kf.updatePosition(z, sigma * 3)
         } else {
             kf.updatePosition(z, sigma)
-            dopplerVelocity(fix)?.let { v -> kf.updateVelocity(v, (fix.speedAccuracyMps ?: 0.5).coerceIn(0.2, 2.0)) }
+            rememberFix(fix)
+            dopplerVelocity(fix)?.let { (v, sigmaV) -> kf.updateVelocity(v, sigmaV) }
         }
         accepted(fix, sigma)
 
@@ -296,14 +304,47 @@ class Tracker(
         source = if (imuSeen) PositionSource.Fused else PositionSource.Gps
     }
 
-    private fun dopplerVelocity(fix: GpsFix): Vec2? {
+    /**
+     * The fix's Doppler velocity and its 1-sigma, or null when there is none. Doppler speed is excellent, but some
+     * chipsets (and the Android emulator) report a bearing that is stuck or stale; fed to the filter, it drags the
+     * track sideways. So the bearing is checked against the course of the last few fixes. A disagreement or two is
+     * a turn — the course lags and the bearing is the news. Several in a row mean the bearing is wrong, and so does
+     * a bearing that repeats exactly while moving (real bearings jitter by degrees): then only the speed is used,
+     * along the fixes' course and with a wide sigma.
+     */
+    private fun dopplerVelocity(fix: GpsFix): Pair<Vec2, Double>? {
         val s = fix.speedMps ?: return null
-        val b = fix.bearingDeg
-        return when {
-            s < 0.3 -> Vec2.ZERO
-            b == null -> null
-            else -> Vec2.ofHeading(b) * s
+        val sigma = (fix.speedAccuracyMps ?: 0.5).coerceIn(0.2, 2.0)
+        if (s < 0.3) return Vec2.ZERO to sigma
+        val b = fix.bearingDeg ?: return null
+        val previous = lastBearing
+        unchangedBearings = if (previous != null && kotlin.math.abs(Geo.headingDifference(previous, b)) < 0.01) unchangedBearings + 1 else 0
+        lastBearing = b
+        val stuck = unchangedBearings >= STUCK_BEARINGS
+
+        val doppler = Vec2.ofHeading(b) * s to sigma
+        val course = fixCourse() ?: return if (stuck || bearingDisagreements >= BEARING_DISAGREEMENTS) null else doppler
+        val fromCourse = Vec2.ofHeading(course) * s to maxOf(sigma, COURSE_SPEED_SIGMA * s)
+        if (stuck) return fromCourse
+        if (kotlin.math.abs(Geo.headingDifference(b, course)) <= BEARING_TOLERANCE_DEG) {
+            bearingDisagreements = 0
+            return doppler
         }
+        bearingDisagreements++
+        return if (bearingDisagreements < BEARING_DISAGREEMENTS) doppler else fromCourse
+    }
+
+    private fun rememberFix(fix: GpsFix) {
+        recentFixes.addLast(fix)
+        while (recentFixes.isNotEmpty() && fix.timeMs - recentFixes.first().timeMs > COURSE_WINDOW_MS) recentFixes.removeFirst()
+    }
+
+    /** Direction of travel over the last few seconds of fixes, when they have moved far enough to say. */
+    private fun fixCourse(): Double? {
+        if (recentFixes.size < 3) return null
+        val a = recentFixes.first().position
+        val b = recentFixes.last().position
+        return if (Geo.distance(a, b) >= COURSE_MIN_M) Geo.bearing(a, b) else null
     }
 
     /** Learns this person's step length from good GPS speed and cadence, for dead reckoning later. */
@@ -404,5 +445,15 @@ class Tracker(
 
     private companion object {
         const val MAX_EVENTS = 500
+        const val COURSE_WINDOW_MS = 8_000L
+        /** With ~5 m fix noise, 15 m of travel gives a course good to ~25°; 75° is three sigma. */
+        const val COURSE_MIN_M = 15.0
+        const val BEARING_TOLERANCE_DEG = 75.0
+        /** Disagreements in a row before the bearing is distrusted; a 90° corner causes one or two. */
+        const val BEARING_DISAGREEMENTS = 3
+        /** Velocity sigma per m/s of speed when the direction comes from the fixes' course (~25° of course noise). */
+        const val COURSE_SPEED_SIGMA = 0.45
+        /** Identical bearings in a row, while moving, that mark the bearing as stuck. */
+        const val STUCK_BEARINGS = 3
     }
 }
