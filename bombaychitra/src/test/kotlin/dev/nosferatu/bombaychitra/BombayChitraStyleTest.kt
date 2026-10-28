@@ -47,6 +47,31 @@ class BombayChitraStyleTest {
     }
 
     @Test
+    fun quietStyleHidesOnlyPlacesAndHouseNumbers() {
+        val original = Json.parseToJsonElement(shipped(MapTheme.Dark)).jsonObject["layers"]!!.jsonArray
+        val quiet = Json.parseToJsonElement(BombayChitraStyle.hidingSourceLayers(shipped(MapTheme.Dark), BombayChitraStyle.QUIET_HIDDEN))
+            .jsonObject["layers"]!!.jsonArray
+        assertEquals(original.size, quiet.size)
+        var hidden = 0
+        for ((before, after) in original.zip(quiet)) {
+            val b = before.jsonObject
+            val a = after.jsonObject
+            assertEquals(b["id"], a["id"])
+            val sourceLayer = b["source-layer"]?.jsonPrimitive?.content
+            if (sourceLayer in BombayChitraStyle.QUIET_HIDDEN) {
+                hidden++
+                assertEquals("none", a["layout"]!!.jsonObject["visibility"]!!.jsonPrimitive.content)
+                // Only visibility changes; the rest of the layout (text fields, fonts) is BombayChitra's.
+                assertEquals(b["layout"]?.jsonObject.orEmpty(), a["layout"]!!.jsonObject - "visibility")
+                assertEquals(b["paint"], a["paint"])
+            } else {
+                assertEquals(b, a)
+            }
+        }
+        assertEquals(3, hidden, "poi-dot, poi-label, housenumbers")
+    }
+
+    @Test
     fun buildsFileAndServerUris() {
         assertEquals("pmtiles://file:///sdcard/x.pmtiles", BombayChitraStyle.pmtilesFileUri("/sdcard/x.pmtiles"))
         assertEquals("pmtiles://file:///C:/maps/x.pmtiles", BombayChitraStyle.pmtilesFileUri("C:\\maps\\x.pmtiles"))
