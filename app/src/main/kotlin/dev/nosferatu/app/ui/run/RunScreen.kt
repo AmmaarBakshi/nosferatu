@@ -96,7 +96,7 @@ fun RunScreen(onOpenMapData: () -> Unit, onOpenRun: (String) -> Unit, modifier: 
                 Button(onClick = onOpenMapData) { Text("Get the map") }
             }
         } else {
-            val style = remember(ready.file) { container.mapStyles.offlineStyle(MapTheme.Dark, ready.file) }
+            val style = remember(ready.file) { container.mapStyles.offlineStyle(MapTheme.Dark, ready.file, quiet = true) }
             val l = live
             BombayChitraMap(
                 styleJson = style,

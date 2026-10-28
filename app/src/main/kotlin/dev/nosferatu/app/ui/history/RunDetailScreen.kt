@@ -82,7 +82,7 @@ fun RunDetailScreen(id: String, onBack: () -> Unit, modifier: Modifier = Modifie
         val ready = tiles as? TilesState.Ready
         Box(Modifier.fillMaxWidth().height(320.dp).clip(RoundedCornerShape(20.dp))) {
             if (ready != null && track.any { it.isNotEmpty() }) {
-                val style = remember(ready.file) { container.mapStyles.offlineStyle(MapTheme.Dark, ready.file) }
+                val style = remember(ready.file) { container.mapStyles.offlineStyle(MapTheme.Dark, ready.file, quiet = true) }
                 BombayChitraMap(
                     styleJson = style,
                     overlay = MapOverlayState(trail = track),
