@@ -67,9 +67,12 @@ class RunStore(context: Context) {
     }
 }
 
-/** Appends trace events; only used from the tracking thread. */
+/**
+ * Appends trace events; only used from the tracking thread. Flushes every few seconds of trace time, so if the process
+ * is killed mid-run (a revoked permission does that) the run can still be recovered from what reached the disk.
+ */
 class TraceWriter(private val out: BufferedWriter) : AutoCloseable {
-    private var count = 0
+    private var flushedAtMs = 0L
 
     init {
         out.write(TraceFormat.HEADER)
@@ -78,11 +81,18 @@ class TraceWriter(private val out: BufferedWriter) : AutoCloseable {
 
     fun write(e: TraceEvent) {
         TraceFormat.write(e, out)
-        if (++count % 2_000 == 0) out.flush()
+        if (e.timeMs - flushedAtMs >= FLUSH_MS) {
+            flush()
+            flushedAtMs = e.timeMs
+        }
     }
+
+    fun flush() = out.flush()
 
     override fun close() {
         out.flush()
         out.close()
     }
 }
+
+private const val FLUSH_MS = 5_000L
