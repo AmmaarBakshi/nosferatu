@@ -3,6 +3,7 @@ package dev.nosferatu.app.tracking
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.SystemClock
+import dev.nosferatu.app.data.RunRecovery
 import dev.nosferatu.app.data.RunStore
 import dev.nosferatu.app.data.RunSummary
 import dev.nosferatu.app.data.TraceWriter
@@ -65,7 +66,7 @@ class TrackingSession(
     private var startedWallMs = 0L
     private var activeSinceMs = 0L
     private var accumulatedMs = 0L
-    private val runId = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
+    val runId: String = SimpleDateFormat(RunRecovery.ID_FORMAT, Locale.US).format(Date())
 
     private val _state = MutableStateFlow(LiveState(runId = runId, usingMap = adapter != null, hasGyroscope = imu.hasGyroscope))
     val state: StateFlow<LiveState> = _state.asStateFlow()
