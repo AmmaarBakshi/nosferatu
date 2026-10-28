@@ -12,6 +12,7 @@ import dev.nosferatu.app.tracking.TrackingController
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 /** Hand-wired dependencies; the app is small enough not to need a DI framework. */
 class AppContainer(context: Context) {
@@ -32,6 +33,8 @@ class NosferatuApp : Application() {
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
+        // A run the process died in (a revoked permission kills it) is saved from its trace.
+        container.scope.launch { container.tracking.recoverUnfinished() }
     }
 }
 

@@ -2,16 +2,19 @@ package dev.nosferatu.app.tracking
 
 import android.content.Context
 import dev.nosferatu.app.data.RoadGraphRepository
+import dev.nosferatu.app.data.RunRecovery
 import dev.nosferatu.app.data.RunStore
 import dev.nosferatu.app.data.RunSummary
 import dev.nosferatu.app.sensors.GpsSource
 import dev.nosferatu.app.sensors.ImuSource
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * The app's single run: creates a [TrackingSession] on start, keeps the foreground service alive while it runs, and
@@ -75,5 +78,27 @@ class TrackingController(
 
     fun dismissSummary() {
         _lastSaved.value = null
+    }
+
+    /**
+     * Saves the runs the app died in the middle of, rebuilt from their traces (see [RunRecovery]); called once at
+     * launch. A trace too short to give the tracker a single second is removed. Returns how many runs were saved.
+     */
+    suspend fun recoverUnfinished(): Int {
+        val ids = runs.unfinished().filter { it != session?.runId && it != _live.value?.runId }
+        var saved = 0
+        for (id in ids) {
+            val events = runs.readTrace(id)
+            val adapter = if (RunRecovery.usedMap(events)) graph.load() else null
+            val startedAt = RunRecovery.startedAt(id) ?: runs.traceFile(id).lastModified()
+            val summary = withContext(Dispatchers.Default) { RunRecovery.recover(id, startedAt, events, adapter) }
+            if (summary != null) {
+                runs.save(summary)
+                saved++
+            } else {
+                runs.delete(id)
+            }
+        }
+        return saved
     }
 }
